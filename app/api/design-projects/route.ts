@@ -3,6 +3,8 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSameOrigin } from "@/lib/admin-guard";
+import { isJsonContentType } from "@/lib/content-type";
+import { checkDesignIntakeRateLimit } from "@/lib/admin-login-rate-limit";
 import { jsonBodyError, readJsonBodyLimited } from "@/lib/request-body";
 
 export const runtime = "nodejs";
@@ -33,7 +35,21 @@ export async function POST(request: NextRequest) {
   const originError = requireSameOrigin(request);
   if (originError) return originError;
 
-  if (!(request.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
+  const rateLimit = await checkDesignIntakeRateLimit(request.headers.get("cf-connecting-ip"));
+  if (!rateLimit.ok && rateLimit.kind === "limited") {
+    return NextResponse.json({ error: "TOO_MANY_REQUESTS" }, {
+      status: 429,
+      headers: { "Cache-Control": "no-store", "Retry-After": String(rateLimit.retryAfterSeconds) },
+    });
+  }
+  if (!rateLimit.ok) {
+    return NextResponse.json({ error: "SERVICE_UNAVAILABLE" }, {
+      status: 503,
+      headers: { "Cache-Control": "no-store", "Retry-After": "30" },
+    });
+  }
+
+  if (!isJsonContentType(request.headers.get("content-type"))) {
     return NextResponse.json({ error: "UNSUPPORTED_MEDIA_TYPE" }, { status: 415 });
   }
 
