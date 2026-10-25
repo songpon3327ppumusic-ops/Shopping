@@ -31,7 +31,7 @@ The application compares Origin with the request host/protocol. Before productio
 - Test valid production requests and hostile/mismatched Origin requests on staging.
 - If the platform's proxy model differs, adjust origin validation to use a trusted configured canonical origin; do not simply disable the check.
 
-## 4. Secrets and access
+## 4. Shared admin login rate limiter\n\nThe application login route now requires Upstash Redis REST configuration and a trusted Cloudflare client IP. Configure these encrypted environment variables in the hosting platform:\n\n- `UPSTASH_REDIS_REST_URL`: HTTPS REST endpoint for the dedicated Redis database.\n- `UPSTASH_REDIS_REST_TOKEN`: read/write token restricted to that database.\n\nThe limiter uses an atomic Redis Lua script, permits 5 requests per IP per 60-second window, and returns `429` with `Retry-After` after the limit. It fails closed with `503` if credentials, client IP, or Redis are unavailable. The app trusts `CF-Connecting-IP` only when the origin is reachable exclusively through Cloudflare; prevent direct-origin access and verify this assumption in staging. Do not use spoofable `X-Forwarded-For` as a fallback.\n\n## 5. Secrets and access
 
 - Store `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, and `DATABASE_URL` only in the deployment's encrypted environment/secrets manager.
 - Generate the session secret from a cryptographically secure random generator; use at least 32 random bytes.
@@ -39,9 +39,9 @@ The application compares Origin with the request host/protocol. Before productio
 - Rotate credentials immediately if they appear in a commit, log, screenshot, or client-side bundle.
 - Never commit API tokens or production secrets to this repository.
 
-## 5. Verification evidence required before launch
+## 6. Verification evidence required before launch
 
-- [ ] Rate limits are enabled on the production hostname and tested from multiple client IPs.
+- [ ] App-level Upstash login limiter is configured and tested (5/minute/IP), and Cloudflare edge rate limits are enabled on the production hostname and tested from multiple client IPs.
 - [ ] WAF managed rules and DDoS protection are enabled.
 - [ ] Direct origin access is blocked or equivalently protected.
 - [ ] HTTPS redirect and HSTS behavior are checked on the actual deployed host.
