@@ -2,6 +2,7 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/admin-auth";
+import * as originChecker from "@/lib/origin-check";
 
 export async function requireAdmin() {
   const session = await getAdminSession();
@@ -22,24 +23,22 @@ export async function requireAdmin() {
  * This is defense-in-depth alongside HttpOnly + SameSite=Strict cookies.
  */
 export function requireSameOrigin(request: NextRequest): NextResponse | null {
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  const forwardedProto = request.headers.get("x-forwarded-proto");
-  const proto = forwardedProto?.split(",")[0]?.trim() ||
-    (process.env.NODE_ENV === "production" ? "https" : "http");
+  const { checkRequestOrigin } = requireOriginChecker();
+  const result = checkRequestOrigin(
+    request.headers.get("origin"),
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host"),
+    request.headers.get("x-forwarded-proto"),
+    process.env.NODE_ENV,
+  );
 
-  if (!origin || !host) {
-    return NextResponse.json({ error: "ORIGIN_REQUIRED" }, { status: 403 });
-  }
+  if (result === "OK") return null;
+  return NextResponse.json(
+    { error: result },
+    { status: 403, headers: { "Cache-Control": "no-store" } },
+  );
+}
 
-  try {
-    const parsedOrigin = new URL(origin);
-    const normalizedHost = host.split(",")[0].trim().toLowerCase();
-    if (parsedOrigin.host.toLowerCase() !== normalizedHost || parsedOrigin.protocol !== `${proto}:`) {
-      return NextResponse.json({ error: "CROSS_ORIGIN_REQUEST_BLOCKED" }, { status: 403 });
-    }
-  } catch {
-    return NextResponse.json({ error: "INVALID_ORIGIN" }, { status: 403 });
-  }
-  return null;
+function requireOriginChecker() {
+  // Static module import is used; this wrapper keeps the guard's public API small.
+  return originChecker;
 }
