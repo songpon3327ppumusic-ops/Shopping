@@ -5,7 +5,7 @@ This repository remains a development prototype and is **not production-ready**.
 
 | Area | Current state | Risk / required control |
 | --- | --- | --- |
-| Admin authentication | Login endpoint, bcrypt password comparison, signed 8-hour JWT session, HttpOnly/SameSite cookie | No shared durable rate limit or account recovery yet; configure Cloudflare edge rate limiting before exposure. Rotate session secret if exposed. |
+| Admin authentication | Login endpoint, bcrypt password comparison, signed 8-hour JWT session, HttpOnly/SameSite cookie | Shared atomic login rate limiter is implemented using Upstash Redis REST, but it fails closed until `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are configured and a trusted Cloudflare client IP is present. Account recovery is not implemented. Rotate session secret if exposed. |
 | Authorization | Server-side admin checks on implemented admin APIs | Review every route and page; ensure no unguarded admin actions. No staff permission matrix yet. |
 | CSRF/origin | Same-origin checks on browser mutation routes and admin login; SameSite=Strict cookie | Validate reverse-proxy host/proto behavior in staging. Do not rely on Origin checks as the only CSRF defense. |
 | Database | Prisma schema and API code exist | No verified production migration or live staging database in this repository workflow. Use managed PostgreSQL, least-privilege credentials, backups, and restore tests. |
@@ -32,7 +32,7 @@ This repository remains a development prototype and is **not production-ready**.
 
 ## Important limitations
 - A source-code review is not a penetration test and cannot establish that a system is "fully secure".
-- The login and public design-intake endpoints are not protected by a shared durable rate limiter in application code. Configure Cloudflare WAF/rate limiting (or an equivalent shared service) before public exposure.
+- The admin login now uses an atomic shared Upstash Redis rate limiter (5 attempts per IP per 60-second window) and fails closed if the service, credentials, or trusted Cloudflare client IP are unavailable. This must be configured and tested before login will work in deployment. The public design-intake endpoint still requires durable rate limiting and spam controls.
 - The login route uses the `__Host-` cookie prefix. Production must use HTTPS so the browser accepts the Secure cookie. Confirm production behavior on the actual host.
 - Do not enable CSP by guessing a policy: Next.js runtime scripts and external assets require a tested nonce/allowlist design.
 - Do not deploy a database migration until it has been generated/reviewed and tested against a staging database with a backup/restore plan.
