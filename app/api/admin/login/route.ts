@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { createAdminSession } from "@/lib/admin-auth";
 import { requireSameOrigin } from "@/lib/admin-guard";
+import { jsonBodyError, readJsonBodyLimited } from "@/lib/request-body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
