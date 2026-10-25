@@ -6,8 +6,6 @@ export type RateLimitResult =
   | { ok: false; kind: "limited"; retryAfterSeconds: number }
   | { ok: false; kind: "unavailable" };
 
-const WINDOW_SECONDS = 60;
-const MAX_ATTEMPTS = 5;
 const LUA_SCRIPT = [
   "local count = redis.call('INCR', KEYS[1])",
   "if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end",
@@ -15,12 +13,13 @@ const LUA_SCRIPT = [
   "return {count, ttl}",
 ].join("\n");
 
-/**
- * Shared, atomic IP-based limiter for admin login.
- * Requires Upstash Redis REST credentials and a trusted Cloudflare client IP.
- * Fails closed when configuration or the rate-limit service is unavailable.
- */
-export async function checkAdminLoginRateLimit(clientIp: string | null): Promise<RateLimitResult> {
+/** Shared atomic IP limiter; fails closed if credentials, trusted IP, or Redis are unavailable. */
+async function checkSharedIpRateLimit(
+  scope: "admin-login" | "design-intake",
+  clientIp: string | null,
+  maxAttempts: number,
+  windowSeconds: number,
+): Promise<RateLimitResult> {
   const urlValue = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!urlValue || !token || !clientIp || isIP(clientIp) === 0) {
@@ -38,7 +37,7 @@ export async function checkAdminLoginRateLimit(clientIp: string | null): Promise
   }
 
   const ipHash = createHmac("sha256", token).update(clientIp).digest("hex");
-  const key = `lumiere:admin-login:${ipHash}`;
+  const key = `lumiere:${scope}:${ipHash}`;
 
   try {
     const response = await fetch(endpoint.toString().replace(/\/$/, ""), {
@@ -47,7 +46,7 @@ export async function checkAdminLoginRateLimit(clientIp: string | null): Promise
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(["EVAL", LUA_SCRIPT, "1", key, String(WINDOW_SECONDS)]),
+      body: JSON.stringify(["EVAL", LUA_SCRIPT, "1", key, String(windowSeconds)]),
       cache: "no-store",
       signal: AbortSignal.timeout(2_000),
     });
@@ -66,11 +65,19 @@ export async function checkAdminLoginRateLimit(clientIp: string | null): Promise
     if (!Number.isSafeInteger(count) || count < 1 || !Number.isFinite(ttl) || ttl < 0) {
       return { ok: false, kind: "unavailable" };
     }
-    if (count > MAX_ATTEMPTS) {
+    if (count > maxAttempts) {
       return { ok: false, kind: "limited", retryAfterSeconds: Math.max(1, ttl) };
     }
-    return { ok: true, remaining: MAX_ATTEMPTS - count };
+    return { ok: true, remaining: maxAttempts - count };
   } catch {
     return { ok: false, kind: "unavailable" };
   }
+}
+
+export function checkAdminLoginRateLimit(clientIp: string | null): Promise<RateLimitResult> {
+  return checkSharedIpRateLimit("admin-login", clientIp, 5, 60);
+}
+
+export function checkDesignIntakeRateLimit(clientIp: string | null): Promise<RateLimitResult> {
+  return checkSharedIpRateLimit("design-intake", clientIp, 5, 600);
 }
