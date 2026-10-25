@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkAdminLoginRateLimit } from "../lib/admin-login-rate-limit";
+import { checkAdminLoginRateLimit, checkDesignIntakeRateLimit } from "../lib/admin-login-rate-limit";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -41,4 +41,16 @@ describe("checkAdminLoginRateLimit", () => {
     expect(String(request.body)).not.toContain("203.0.113.8");
     expect(request.cache).toBe("no-store");
   });
+  it("uses a separate ten-minute window for public design intake", async () => {
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://redis.example");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "test-token");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ result: [1, 600] }) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await checkDesignIntakeRateLimit("203.0.113.8")).toEqual({ ok: true, remaining: 4 });
+    const request = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(String(request.body)).toContain("design-intake");
+    expect(String(request.body)).toContain("600");
+  });
+
 });
