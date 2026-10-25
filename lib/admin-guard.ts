@@ -2,7 +2,7 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/admin-auth";
-import * as originChecker from "@/lib/origin-check";
+import { checkRequestOrigin } from "@/lib/origin-check";
 
 export async function requireAdmin() {
   const session = await getAdminSession();
@@ -23,7 +23,6 @@ export async function requireAdmin() {
  * This is defense-in-depth alongside HttpOnly + SameSite=Strict cookies.
  */
 export function requireSameOrigin(request: NextRequest): NextResponse | null {
-  const { checkRequestOrigin } = requireOriginChecker();
   const result = checkRequestOrigin(
     request.headers.get("origin"),
     request.headers.get("x-forwarded-host") ?? request.headers.get("host"),
@@ -38,7 +37,3 @@ export function requireSameOrigin(request: NextRequest): NextResponse | null {
   );
 }
 
-function requireOriginChecker() {
-  // Static module import is used; this wrapper keeps the guard's public API small.
-  return originChecker;
-}
