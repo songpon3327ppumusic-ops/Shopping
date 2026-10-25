@@ -51,3 +51,6 @@ This repository remains a development prototype and is **not production-ready**.
 
 ## Incident response
 If a secret is committed or exposed, revoke/rotate it immediately, inspect access logs, remove the secret from active configuration, and follow GitHub's secret-removal guidance. Do not paste production credentials into issues or chat.
+
+## Cloudflare edge deployment guide
+See [`cloudflare-security-controls.md`](./cloudflare-security-controls.md) for rate-limit, WAF, HTTPS, cache, origin, and evidence requirements. Those controls are not automatically enabled by committing the guide; configure and verify them in the Cloudflare dashboard for the actual hostname.
