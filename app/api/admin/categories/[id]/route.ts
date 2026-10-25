@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireSameOrigin } from "@/lib/admin-guard";
+import { jsonBodyError, readJsonBodyLimited } from "@/lib/request-body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,10 +25,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   if (!(request.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
     return NextResponse.json({ error: "UNSUPPORTED_MEDIA_TYPE" }, { status: 415 });
   }
-  let raw: unknown;
-  try { raw = await request.json(); } catch {
-    return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
-  }
+  const body = await readJsonBodyLimited(request, 20_000);
+  if (!body.ok) return jsonBodyError(body.kind);
+  const raw: unknown = body.value;
   const parsed = patchSchema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "INVALID_INPUT", details: parsed.error.flatten() }, { status: 400 });
   const { id } = await context.params;
