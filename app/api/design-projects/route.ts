@@ -4,6 +4,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSameOrigin } from "@/lib/admin-guard";
 import { jsonBodyError, readJsonBodyLimited } from "@/lib/request-body";
+import { requireSameOrigin } from "@/lib/admin-guard";
+import { jsonBodyError, readJsonBodyLimited } from "@/lib/request-body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,23 +32,20 @@ function makeProjectNumber() {
 }
 
 export async function POST(request: NextRequest) {
+  const originError = requireSameOrigin(request);
+  if (originError) return originError;
+
   if (!(request.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
     return NextResponse.json({ error: "UNSUPPORTED_MEDIA_TYPE" }, { status: 415 });
-  }
-
-  const declaredLength = Number(request.headers.get("content-length") || 0);
-  if (declaredLength > 20_000) {
-    return NextResponse.json({ error: "REQUEST_TOO_LARGE" }, { status: 413 });
   }
 
   if (!process.env.DATABASE_URL) {
     return NextResponse.json({ error: "SERVICE_UNAVAILABLE" }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 
-  let raw: unknown;
-  try { raw = await request.json(); } catch {
-    return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
-  }
+  const body = await readJsonBodyLimited(request, 20_000);
+  if (!body.ok) return jsonBodyError(body.kind);
+  const raw: unknown = body.value;
 
   const parsed = intakeSchema.safeParse(raw);
   if (!parsed.success) {
