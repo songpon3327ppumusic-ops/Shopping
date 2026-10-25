@@ -16,7 +16,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Use a stable npm 10 release to avoid the runner's Arborist regression.
       - name: Pin npm
         run: npm install --global npm@10.8.2
       - name: Validate database schema
@@ -24,7 +23,9 @@ jobs:
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/lumiere_ci
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: |
+          npm config set legacy-peer-deps true
+          npm install --no-audit --no-fund
       - name: Check production dependency advisories
         run: npm audit --audit-level=high
       - run: npm run test
