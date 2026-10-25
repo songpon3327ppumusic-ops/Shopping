@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { createAdminSession } from "@/lib/admin-auth";
+import { isJsonContentType } from "@/lib/content-type";
 import { requireSameOrigin } from "@/lib/admin-guard";
 import { jsonBodyError, readJsonBodyLimited } from "@/lib/request-body";
 
@@ -31,9 +32,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const contentType = request.headers.get("content-type")?.trim() || "";
-  // Accept JSON and optional parameters (for example charset), not substring lookalikes.
-  if (!/^application\/json(?:\s*;|$)/i.test(contentType)) {
+    return NextResponse.json({ error: "UNSUPPORTED_MEDIA_TYPE" }, { status: 415 });
+  }
+
+  if (!isJsonContentType(request.headers.get("content-type"))) {
     return NextResponse.json({ error: "UNSUPPORTED_MEDIA_TYPE" }, { status: 415 });
   }
 
