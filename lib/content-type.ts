@@ -1,12 +1,9 @@
-/** Accept application/json and validate any optional media-type parameters. */
+/** Accept JSON only; the login API has no need for arbitrary media-type parameters. */
 export function isJsonContentType(value: string | null): boolean {
   if (value === null) return false;
   const parts = value.trim().split(";");
   if (parts.shift()?.trim().toLowerCase() !== "application/json") return false;
-  return parts.every((parameter) => {
-    const equalsAt = parameter.indexOf("=");
-    if (equalsAt <= 0 || parameter.slice(equalsAt + 1).trim().length === 0) return false;
-    const name = parameter.slice(0, equalsAt).trim();
-    return /^[!#$%&\x27*+.^_`|~0-9a-z-]+$/i.test(name) && !/[\r\n]/.test(parameter);
-  });
+  if (parts.length === 0) return true;
+  if (parts.length !== 1) return false;
+  return /^\s*charset\s*=\s*(?:utf-8|"utf-8")\s*$/i.test(parts[0]);
 }
