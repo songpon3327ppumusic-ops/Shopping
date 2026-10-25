@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { isIP } from "node:net";
 
 export type RateLimitResult =
@@ -37,7 +37,7 @@ export async function checkAdminLoginRateLimit(clientIp: string | null): Promise
     return { ok: false, kind: "unavailable" };
   }
 
-  const ipHash = createHash("sha256").update(clientIp).digest("hex");
+  const ipHash = createHmac("sha256", token).update(clientIp).digest("hex");
   const key = `lumiere:admin-login:${ipHash}`;
 
   try {
