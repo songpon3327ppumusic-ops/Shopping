@@ -17,6 +17,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      - name: Validate database schema
+        run: npx --yes prisma@6 validate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/lumiere_ci
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
