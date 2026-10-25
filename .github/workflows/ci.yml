@@ -16,11 +16,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Pin npm instead of inheriting the runner image's npm release. This
-      # makes dependency resolution reproducible while the project lockfile is
-      # being established and avoids runner-only Arborist regressions.
+      # Use a stable npm 10 release to avoid the runner's Arborist regression.
       - name: Pin npm
-        run: npm install --global npm@10.9.2
+        run: npm install --global npm@10.8.2
       - name: Validate database schema
         run: npx --yes prisma@6 validate
         env:
