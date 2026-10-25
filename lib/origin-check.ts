@@ -14,7 +14,7 @@ export function checkRequestOrigin(
     (nodeEnv === "production" ? "https" : "http");
 
   // Reject ambiguous or malformed proxy-derived host/protocol values.
-  if (!host || /[\\s/@?#]/.test(host) || !/^[a-z][a-z0-9+.-]*$/.test(proto)) {
+  if (!host || /[\s\/@?#]/.test(host) || !/^[a-z][a-z0-9+.-]*$/.test(proto)) {
     return "INVALID_ORIGIN";
   }
 
