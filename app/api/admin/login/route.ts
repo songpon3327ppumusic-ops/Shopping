@@ -31,8 +31,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const contentType = request.headers.get("content-type") || "";
-  if (!contentType.toLowerCase().includes("application/json")) {
+  const contentType = request.headers.get("content-type")?.trim() || "";
+  // Accept JSON and optional parameters (for example charset), not substring lookalikes.
+  if (!/^application\/json(?:\s*;|$)/i.test(contentType)) {
     return NextResponse.json({ error: "UNSUPPORTED_MEDIA_TYPE" }, { status: 415 });
   }
 
