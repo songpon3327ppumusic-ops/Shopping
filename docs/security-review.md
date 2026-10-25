@@ -10,7 +10,7 @@ This repository remains a development prototype and is **not production-ready**.
 | CSRF/origin | Same-origin checks on browser mutation routes and admin login; SameSite=Strict cookie | Validate reverse-proxy host/proto behavior in staging. Do not rely on Origin checks as the only CSRF defense. |
 | Database | Prisma schema and API code exist | No verified production migration or live staging database in this repository workflow. Use managed PostgreSQL, least-privilege credentials, backups, and restore tests. |
 | Catalog/inventory | Admin category/product APIs and stock adjustment ledger | Checkout reservation, concurrency tests, and reconciliation are not implemented. |
-| Design service | Public brief intake and admin project management APIs | Public intake needs durable rate limiting, spam controls, privacy notice/retention workflow, and automated tests before launch. |
+| Design service | Public brief intake and admin project management APIs | Public intake now uses the shared Upstash Redis limiter (5 requests per IP per 10-minute window) and fails closed until configured; spam controls, privacy notice/retention workflow, and staging verification are still required. |
 | Checkout/order totals | No complete server-side checkout | Recalculate prices, promotions, shipping and totals on the server. Never trust browser totals. |
 | Payments | No real provider connected | Verify signed webhooks, idempotency, amount/currency/order matching, and replay protection. Never mark an order paid from a browser redirect alone. |
 | Uploads/logo assets | Secure upload flow not implemented | Use private object storage, allowlisted MIME/types, size limits, randomized object keys, malware scanning where appropriate, and signed URLs. |
@@ -32,7 +32,7 @@ This repository remains a development prototype and is **not production-ready**.
 
 ## Important limitations
 - A source-code review is not a penetration test and cannot establish that a system is "fully secure".
-- The admin login now uses an atomic shared Upstash Redis rate limiter (5 attempts per IP per 60-second window) and fails closed if the service, credentials, or trusted Cloudflare client IP are unavailable. This must be configured and tested before login will work in deployment. The public design-intake endpoint still requires durable rate limiting and spam controls.
+- The admin login now uses an atomic shared Upstash Redis rate limiter (5 attempts per IP per 60-second window) and fails closed if the service, credentials, or trusted Cloudflare client IP are unavailable. This must be configured and tested before login will work in deployment. The public design-intake endpoint now uses the same durable limiter with a separate 5-per-10-minute window; spam controls and privacy/retention workflow remain outstanding.
 - The login route uses the `__Host-` cookie prefix. Production must use HTTPS so the browser accepts the Secure cookie. Confirm production behavior on the actual host.
 - Do not enable CSP by guessing a policy: Next.js runtime scripts and external assets require a tested nonce/allowlist design.
 - Do not deploy a database migration until it has been generated/reviewed and tested against a staging database with a backup/restore plan.
