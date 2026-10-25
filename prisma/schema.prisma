@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+enum UserRole { CUSTOMER STAFF ADMIN }
+enum UserStatus { ACTIVE SUSPENDED }
+enum ProductStatus { DRAFT ACTIVE ARCHIVED }
+enum OrderStatus { PENDING AWAITING_PAYMENT PAID PROCESSING SHIPPED COMPLETED CANCELLED REFUND_PENDING REFUNDED }
+enum PaymentStatus { PENDING SUCCEEDED FAILED CANCELLED REFUND_PENDING REFUNDED }
+enum PaymentProvider { STRIPE PROMPTPAY BANK_TRANSFER CASH_ON_DELIVERY MANUAL }
+enum DesignProjectStatus { INQUIRY AWAITING_BRIEF QUOTED AWAITING_PAYMENT IN_PROGRESS REVIEW REVISION APPROVED COMPLETED CANCELLED }
+enum InventoryMovementType { RECEIVED RESERVED RELEASED SOLD RETURNED ADJUSTMENT }
+
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  passwordHash String?
+  name String
+  phone String?
+  role UserRole @default(CUSTOMER)
+  status UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  addresses Address[]
+  orders Order[]
+  designProjects DesignProject[]
+  auditEvents AuditLog[] @relation("AuditActor")
+  @@index([role, status])
+}
+model Address {
+  id String @id @default(cuid())
+  userId String
+  label String?
+  recipientName String
+  phone String
+  addressLine1 String
+  addressLine2 String?
+  subdistrict String?
+  district String
+  province String
+  postalCode String
+  countryCode String @default("TH")
+  isDefault Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, isDefault])
+}
+model Category {
+  id String @id @default(cuid())
+  name String
+  slug String @unique
+  description String?
+  sortOrder Int @default(0)
+  isActive Boolean @default(true)
+  products Product[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Product {
+  id String @id @default(cuid())
+  categoryId String
+  name String
+  slug String @unique
+  description String @default("")
+  status ProductStatus @default(DRAFT)
+  featured Boolean @default(false)
+  images Json @default("[]")
+  seoTitle String?
+  seoDescription String?
+  variants ProductVariant[]
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  orderItems OrderItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, featured, createdAt])
+  @@index([categoryId, status])
+}
+model ProductVariant {
+  id String @id @default(cuid())
+  productId String
+  sku String @unique
+  name String
+  size String?
+  color String?
+  priceSatang Int
+  compareAtSatang Int?
+  stockOnHand Int @default(0)
+  stockReserved Int @default(0)
+  isActive Boolean @default(true)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+  movements InventoryMovement[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([productId, isActive])
+}
+model InventoryMovement {
+  id String @id @default(cuid())
+  variantId String
+  type InventoryMovementType
+  quantity Int
+  referenceType String?
+  referenceId String?
+  note String?
+  createdByUserId String?
+  createdAt DateTime @default(now())
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  @@index([variantId, createdAt])
+  @@index([referenceType, referenceId])
+}
+model Order {
+  id String @id @default(cuid())
+  orderNumber String @unique
+  userId String?
+  status OrderStatus @default(PENDING)
+  customerName String
+  customerEmail String
+  customerPhone String
+  shippingAddress Json
+  subtotalSatang Int
+  discountSatang Int @default(0)
+  shippingSatang Int @default(0)
+  totalSatang Int
+  currency String @default("THB")
+  promotionCode String?
+  customerNote String?
+  trackingNumber String?
+  shippingProvider String?
+  paidAt DateTime?
+  shippedAt DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items OrderItem[]
+  payments Payment[]
+  @@index([status, createdAt])
+  @@index([customerEmail, createdAt])
+  @@index([userId, createdAt])
+}
+model OrderItem {
+  id String @id @default(cuid())
+  orderId String
+  productId String
+  variantId String
+  productName String
+  variantName String
+  sku String
+  unitPriceSatang Int
+  quantity Int
+  lineTotalSatang Int
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  @@index([orderId])
+  @@index([variantId])
+}
+model Payment {
+  id String @id @default(cuid())
+  orderId String
+  provider PaymentProvider
+  status PaymentStatus @default(PENDING)
+  amountSatang Int
+  currency String @default("THB")
+  providerPaymentId String?
+  providerCheckoutId String?
+  idempotencyKey String @unique
+  webhookEventId String? @unique
+  paidAt DateTime?
+  failureCode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  @@index([orderId, createdAt])
+  @@index([provider, providerPaymentId])
+}
+model Promotion {
+  id String @id @default(cuid())
+  code String @unique
+  title String
+  description String?
+  discountType String
+  discountValue Int
+  minimumSpendSatang Int @default(0)
+  maxDiscountSatang Int?
+  usageLimit Int?
+  usageCount Int @default(0)
+  startsAt DateTime?
+  endsAt DateTime?
+  isActive Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([isActive, startsAt, endsAt])
+}
+model LogoServicePackage {
+  id String @id @default(cuid())
+  name String
+  slug String @unique
+  description String
+  priceSatang Int
+  revisionLimit Int @default(2)
+  deliveryDays Int @default(7)
+  deliverables Json @default("[]")
+  isActive Boolean @default(true)
+  sortOrder Int @default(0)
+  projects DesignProject[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model DesignProject {
+  id String @id @default(cuid())
+  projectNumber String @unique
+  userId String?
+  packageId String
+  status DesignProjectStatus @default(INQUIRY)
+  brandName String
+  contactName String
+  contactEmail String
+  contactPhone String?
+  brief Json @default("{}")
+  quotedPriceSatang Int?
+  finalPriceSatang Int?
+  dueAt DateTime?
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  package LogoServicePackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  revisions DesignRevision[]
+  @@index([status, createdAt])
+  @@index([contactEmail, createdAt])
+}
+model DesignRevision {
+  id String @id @default(cuid())
+  projectId String
+  revisionNumber Int
+  customerFeedback String
+  assetUrls Json @default("[]")
+  createdAt DateTime @default(now())
+  project DesignProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@unique([projectId, revisionNumber])
+}
+model AuditLog {
+  id String @id @default(cuid())
+  actorUserId String?
+  action String
+  entityType String
+  entityId String
+  metadata Json @default("{}")
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+}
