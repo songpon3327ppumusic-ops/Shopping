@@ -32,9 +32,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-    return NextResponse.json({ error: "UNSUPPORTED_MEDIA_TYPE" }, { status: 415 });
-  }
-
   if (!isJsonContentType(request.headers.get("content-type"))) {
     return NextResponse.json({ error: "UNSUPPORTED_MEDIA_TYPE" }, { status: 415 });
   }
