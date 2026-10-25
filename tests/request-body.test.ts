@@ -40,7 +40,7 @@ describe("readJsonBodyLimited", () => {
         controller.close();
       },
     });
-    const request = new Request("https://shop.example/api/test", { method: "POST", body: stream, duplex: "half" } as RequestInit);
+    const request = new Request("https://shop.example/api/test", { method: "POST", body: stream, duplex: "half" } as RequestInit & { duplex: "half" });
     const result = await readJsonBodyLimited(request, 32);
     expect(result).toEqual({ ok: false, kind: "INVALID_JSON" });
   });
