@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { createAdminSession } from "@/lib/admin-auth";
+import { requireSameOrigin } from "@/lib/admin-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,8 +13,17 @@ const bodySchema = z.object({
 }).strict();
 
 export async function POST(request: NextRequest) {
-  // Deployments must configure a shared, durable rate limiter at the edge
-  // (e.g. Cloudflare WAF/rate limiting) before exposing this endpoint publicly.
+  const originError = requireSameOrigin(request);
+  if (originError) return originError;
+
+  // A shared, durable edge rate limiter is mandatory before public exposure.
+  // App-instance memory counters are intentionally not used because they are
+  // bypassable across serverless instances and restarts.
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (declaredLength > 4_000) {
+    return NextResponse.json({ error: "REQUEST_TOO_LARGE" }, { status: 413, headers: { "Cache-Control": "no-store" } });
+  }
+
   const expectedEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const passwordHash = process.env.ADMIN_PASSWORD_HASH;
 
