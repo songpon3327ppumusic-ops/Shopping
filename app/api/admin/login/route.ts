@@ -20,10 +20,6 @@ export async function POST(request: NextRequest) {
   // A shared, durable edge rate limiter is mandatory before public exposure.
   // App-instance memory counters are intentionally not used because they are
   // bypassable across serverless instances and restarts.
-  const declaredLength = Number(request.headers.get("content-length") || 0);
-  if (declaredLength > 4_000) {
-    return NextResponse.json({ error: "REQUEST_TOO_LARGE" }, { status: 413, headers: { "Cache-Control": "no-store" } });
-  }
 
   const expectedEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const passwordHash = process.env.ADMIN_PASSWORD_HASH;
@@ -40,12 +36,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "UNSUPPORTED_MEDIA_TYPE" }, { status: 415 });
   }
 
-  let raw: unknown;
-  try {
-    raw = await request.json();
-  } catch {
-    return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
-  }
+  const body = await readJsonBodyLimited(request, 4_000);
+  if (!body.ok) return jsonBodyError(body.kind);
+  const raw: unknown = body.value;
 
   const parsed = bodySchema.safeParse(raw);
   if (!parsed.success) {
