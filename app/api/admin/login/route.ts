@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { createAdminSession } from "@/lib/admin-auth";
 import { isJsonContentType } from "@/lib/content-type";
+import { checkAdminLoginRateLimit } from "@/lib/admin-login-rate-limit";
 import { requireSameOrigin } from "@/lib/admin-guard";
 import { jsonBodyError, readJsonBodyLimited } from "@/lib/request-body";
 
@@ -18,9 +19,19 @@ export async function POST(request: NextRequest) {
   const originError = requireSameOrigin(request);
   if (originError) return originError;
 
-  // A shared, durable edge rate limiter is mandatory before public exposure.
-  // App-instance memory counters are intentionally not used because they are
-  // bypassable across serverless instances and restarts.
+  const rateLimit = await checkAdminLoginRateLimit(request.headers.get("cf-connecting-ip"));
+  if (!rateLimit.ok && rateLimit.kind === "limited") {
+    return NextResponse.json(
+      { error: "TOO_MANY_REQUESTS" },
+      { status: 429, headers: { "Cache-Control": "no-store", "Retry-After": String(rateLimit.retryAfterSeconds) } },
+    );
+  }
+  if (!rateLimit.ok) {
+    return NextResponse.json(
+      { error: "ADMIN_AUTH_NOT_CONFIGURED" },
+      { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "30" } },
+    );
+  }
 
   const expectedEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const passwordHash = process.env.ADMIN_PASSWORD_HASH;
