@@ -16,12 +16,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
       - name: Validate database schema
         run: npx --yes prisma@6 validate
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/lumiere_ci
-      - run: npm ci
+      - name: Install dependencies
+        run: npm install
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
