@@ -16,18 +16,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Pin npm instead of inheriting the runner image's npm release. This
+      # makes dependency resolution reproducible while the project lockfile is
+      # being established and avoids runner-only Arborist regressions.
+      - name: Pin npm
+        run: npm install --global npm@10.9.2
       - name: Validate database schema
         run: npx --yes prisma@6 validate
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/lumiere_ci
       - name: Install dependencies
-        shell: bash
-        run: |
-          npm install --no-audit --no-fund || {
-            echo "npm install failed; clearing npm cache and retrying once."
-            npm cache clean --force
-            npm install --no-audit --no-fund
-          }
+        run: npm install --no-audit --no-fund
       - name: Check production dependency advisories
         run: npm audit --audit-level=high
       - run: npm run test
