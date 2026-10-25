@@ -31,7 +31,7 @@ export async function readJsonBodyLimited(request: Request, maxBytes: number): P
       if (done) break;
       total += value.byteLength;
       if (total > maxBytes) {
-        await reader.cancel();
+        try { await reader.cancel(); } catch { /* best effort; size limit still applies */ }
         return { ok: false, kind: "TOO_LARGE" };
       }
       chunks.push(value);
