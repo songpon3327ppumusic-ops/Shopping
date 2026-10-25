@@ -23,6 +23,24 @@ describe("readJsonBodyLimited", () => {
     expect(result).toEqual({ ok: false, kind: "TOO_LARGE" });
   });
 
+  it("rejects malformed or negative content length values", async () => {
+    for (const value of ["abc", "-1", "Infinity"]) {
+      const result = await readJsonBodyLimited(
+        requestWithBody('{"ok":true}', { "content-length": value }),
+        32,
+      );
+      expect(result).toEqual({ ok: false, kind: "INVALID_JSON" });
+    }
+  });
+
+  it("rejects an empty request body", async () => {
+    const result = await readJsonBodyLimited(
+      new Request("https://shop.example/api/test", { method: "POST" }),
+      32,
+    );
+    expect(result).toEqual({ ok: false, kind: "INVALID_JSON" });
+  });
+
   it("rejects oversized streamed bodies even without content length", async () => {
     const result = await readJsonBodyLimited(requestWithBody(JSON.stringify({ value: "x".repeat(128) })), 32);
     expect(result).toEqual({ ok: false, kind: "TOO_LARGE" });
