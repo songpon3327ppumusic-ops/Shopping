@@ -64,7 +64,8 @@ export async function POST(request: NextRequest) {
   if (originError) return originError;
 
   const { session, response } = await requireAdmin();
-  if (response || !session) return response;
+  if (response) return response;
+  if (!session) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   if (!process.env.DATABASE_URL) {
     return NextResponse.json({ error: "DATABASE_NOT_CONFIGURED" }, { status: 503 });
