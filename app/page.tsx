@@ -46,6 +46,22 @@ export default function Home() {
 
       <section className="trust-row"><span>DESIGNED WITH INTENTION</span><span className="trust-divider"></span><span>TIMELESS BY DESIGN</span><span className="trust-divider"></span><span>MADE FOR REAL LIFE</span></section>
 
+      <section className="discovery-section section-wrap" aria-labelledby="discovery-title">
+        <div className="discovery-intro"><p className="eyebrow"><Sparkles size={14} /> FIND YOUR NEXT FAVORITE</p><h2 id="discovery-title">ค้นพบสิ่งที่ใช่สำหรับคุณ<span>.</span></h2><p className="muted">ค้นหาเสื้อผ้าโทนมินิมอล หรือเลือกบริการออกแบบแบรนด์ในแบบของคุณ</p></div>
+        <div className="discovery-panel"><label className="discovery-search"><Search size={19} /><input aria-label="ค้นหาชื่อสินค้า สี หรือประเภท" placeholder="ค้นหาสินค้า สี หรือประเภท..." value={query} onChange={e => setQuery(e.target.value)} /><span className="search-hint">ค้นหา</span></label>
+          <div className="discovery-chips" aria-label="ตัวกรองสินค้า">{["ทั้งหมด", "เสื้อ", "เสื้อคลุม", "กางเกง"].map(c => <button key={c} className={category === c ? "discovery-chip selected" : "discovery-chip"} onClick={() => setCategory(c)}>{c}</button>)}<a className="discovery-service" href="#design"><Palette size={15} /> บริการออกแบบโลโก้ <ArrowRight size={14} /></a></div>
+        </div>
+      </section>
+      <section className="category-section section-wrap" aria-labelledby="category-title">
+        <div className="section-heading"><div><p className="eyebrow">EXPLORE THE STUDIO</p><h2 id="category-title">เลือกชมตามสไตล์<span>.</span></h2><p className="muted">เริ่มจากหมวดที่คุณกำลังมองหา แล้วค้นพบชิ้นที่เข้ากับทุกวันของคุณ</p></div></div>
+        <div className="category-grid">
+          <button className="category-tile category-tile-shirt" onClick={() => { setCategory("เสื้อ"); document.getElementById("shop")?.scrollIntoView({behavior:"smooth"}); }}><span className="category-index">01 / CLOTHING</span><span className="category-title">เสื้อและท็อปส์</span><span className="category-link">เลือกชมสินค้า <ArrowRight size={15}/></span></button>
+          <button className="category-tile category-tile-layer" onClick={() => { setCategory("เสื้อคลุม"); document.getElementById("shop")?.scrollIntoView({behavior:"smooth"}); }}><span className="category-index">02 / LAYERS</span><span className="category-title">เสื้อคลุม</span><span className="category-link">เลือกชมสินค้า <ArrowRight size={15}/></span></button>
+          <button className="category-tile category-tile-pants" onClick={() => { setCategory("กางเกง"); document.getElementById("shop")?.scrollIntoView({behavior:"smooth"}); }}><span className="category-index">03 / ESSENTIALS</span><span className="category-title">กางเกงและไอเท็มพื้นฐาน</span><span className="category-link">เลือกชมสินค้า <ArrowRight size={15}/></span></button>
+          <a className="category-tile category-tile-design" href="#design"><span className="category-index">04 / BRAND STUDIO</span><span className="category-title">ออกแบบโลโก้ด้วย Canva</span><span className="category-link">ค้นหาแพ็กเกจ <ArrowRight size={15}/></span></a>
+        </div>
+      </section>
+
       <section className="shop-section section-wrap" id="shop">
         <div className="section-heading"><div><p className="eyebrow">THE COLLECTION</p><h2>ชิ้นโปรดที่ใส่ได้ทุกวัน<span>.</span></h2><p className="muted">คัดสรรชิ้นเรียบง่ายที่เข้ากับคุณได้ในทุกโอกาส</p></div><a className="text-link desktop-only" href="#shop">ดูสินค้าทั้งหมด <ArrowRight size={16} /></a></div>
         <div className="filters">{["ทั้งหมด", "เสื้อ", "เสื้อคลุม", "กางเกง"].map(c => <button key={c} className={category === c ? "filter active" : "filter"} onClick={() => setCategory(c)}>{c}</button>)}</div>
