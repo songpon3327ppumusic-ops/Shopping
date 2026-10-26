@@ -34,11 +34,11 @@ This repository remains a development prototype and is **not production-ready**.
 ## Important limitations
 - A source-code review is not a penetration test and cannot establish that a system is "fully secure".
 - The admin login and public design-intake routes require configured Upstash Redis and trusted Cloudflare client-IP handling; they fail closed when unavailable.
-- Checkout creates unpaid orders only; payment is not connected. The protected expiry endpoint must be scheduled in hosting before reservations are relied on in production.
+- Checkout creates unpaid orders only; payment is not connected. The protected expiry endpoint has a GitHub Actions workflow scheduled every 5 minutes; configure and test the required secrets and endpoint on staging before relying on it in production. GitHub scheduled jobs may be delayed.
 - Production must use HTTPS for the Secure `__Host-` cookie.
 - No database migration has been generated/reviewed/applied against staging here. Do not deploy a schema change without a migration and backup/restore plan.
 - No reproducible package lockfile has been verified.
-- No production deployment, scheduler, Cloudflare rules, database, payment credentials, or storage credentials have been configured or verified through this repository review.
+- No production deployment, database, Cloudflare rules, payment credentials, or storage credentials have been configured or verified through this repository review. The scheduler workflow is committed but still requires repository and hosting secrets plus a successful manual staging run.
 
 ## Minimum release gates
 1. CI passes on the exact release commit from a clean reproducible install with no unresolved critical/high findings.
