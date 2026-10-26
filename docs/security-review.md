@@ -9,9 +9,9 @@ This repository remains a development prototype and is **not production-ready**.
 | Authorization | Server-side admin checks on implemented admin APIs | Review every route and page; ensure no unguarded admin actions. No staff permission matrix yet. |
 | CSRF/origin | Same-origin checks on browser mutation routes and admin login; SameSite=Strict cookie | Validate reverse-proxy host/proto behavior in staging. Do not rely on Origin checks as the only CSRF defense. |
 | Database | Prisma schema and API code exist | No verified production migration or live staging database in this repository workflow. Use managed PostgreSQL, least-privilege credentials, backups, and restore tests. |
-| Catalog/inventory | Admin category/product APIs and stock adjustment ledger | Checkout reservation, concurrency tests, and reconciliation are not implemented. |
+| Catalog/inventory | Admin category/product APIs, stock adjustment ledger, and conditional SQL stock reservations in checkout | Automated concurrent checkout tests, reservation reconciliation, and staging verification remain outstanding. Expired reservations require a configured scheduler calling the protected cleanup endpoint. |
 | Design service | Public brief intake and admin project management APIs | Public intake now uses the shared Upstash Redis limiter (5 requests per IP per 10-minute window) and fails closed until configured; spam controls, privacy notice/retention workflow, and staging verification are still required. |
-| Checkout/order totals | No complete server-side checkout | Recalculate prices, promotions, shipping and totals on the server. Never trust browser totals. |
+| Checkout/order totals | Server-side checkout endpoint now recalculates item prices from PostgreSQL, creates idempotent unpaid orders, and atomically reserves stock for 15 minutes | Shipping is currently zero and promotions are not applied. Add integration/concurrency tests and reviewed migrations. Payment is not connected; do not treat an order as paid. |
 | Payments | No real provider connected | Verify signed webhooks, idempotency, amount/currency/order matching, and replay protection. Never mark an order paid from a browser redirect alone. |
 | Uploads/logo assets | Secure upload flow not implemented | Use private object storage, allowlisted MIME/types, size limits, randomized object keys, malware scanning where appropriate, and signed URLs. |
 | HTTP headers | Baseline defensive headers configured | Validate on deployed HTTPS host. A strict CSP should be designed with nonce support before enforcement. |
@@ -33,7 +33,7 @@ This repository remains a development prototype and is **not production-ready**.
 ## Important limitations
 - A source-code review is not a penetration test and cannot establish that a system is "fully secure".
 - The admin login now uses an atomic shared Upstash Redis rate limiter (5 attempts per IP per 60-second window) and fails closed if the service, credentials, or trusted Cloudflare client IP are unavailable. This must be configured and tested before login will work in deployment. The public design-intake endpoint now uses the same durable limiter with a separate 5-per-10-minute window; spam controls and privacy/retention workflow remain outstanding.
-- The login route uses the `__Host-` cookie prefix. Production must use HTTPS so the browser accepts the Secure cookie. Confirm production behavior on the actual host.
+- Checkout currently creates unpaid orders only; payment is not connected. The protected expiry cleanup endpoint must be scheduled in hosting before reservations are relied on in production.\n- The login route uses the `__Host-` cookie prefix. Production must use HTTPS so the browser accepts the Secure cookie. Confirm production behavior on the actual host.
 - Do not enable CSP by guessing a policy: Next.js runtime scripts and external assets require a tested nonce/allowlist design.
 - Do not deploy a database migration until it has been generated/reviewed and tested against a staging database with a backup/restore plan.
 
@@ -42,7 +42,7 @@ This repository remains a development prototype and is **not production-ready**.
 2. Commit a lockfile and use reproducible dependency installation.
 3. Prisma schema validates and a reviewed migration applies to staging; backup restore is rehearsed.
 4. Automated tests cover authentication, unauthorized access, origin rejection, input validation, audit logs, and rate-limit behavior.
-5. Checkout tests prove server-side totals and atomic inventory reservation under concurrent requests.
+5. Checkout integration tests prove server-side totals, idempotency, expiry release, and atomic inventory reservation under concurrent requests.
 6. Payment webhook signature, idempotency, amount/currency matching, and replay tests pass in provider test mode.
 7. CodeQL, secret scanning, dependency scanning, and a manual security review have been reviewed with no unresolved critical/high findings.
 8. Backups restore successfully; monitoring and incident response are ready.
