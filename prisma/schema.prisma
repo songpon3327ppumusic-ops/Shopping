@@ -168,6 +168,8 @@ model InventoryMovement {
 model Order {
   id String @id @default(cuid())
   orderNumber String @unique
+  checkoutKey String? @unique
+  reservationExpiresAt DateTime?
   userId String?
   status OrderStatus @default(PENDING)
   customerName String
